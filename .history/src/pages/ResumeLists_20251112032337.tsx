@@ -12,7 +12,7 @@ type ResumeMetadata = {
   fileName: string;
   fileSize: string;
   fileUrl: string;
-  uploadDate: string;
+  uploadDate: string; 
   uid: string;
   storagePath: string;
 };
@@ -50,6 +50,7 @@ const ResumeLists: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  // --- 2. Fetch User Display Names ---
   const fetchApplicantNames = useCallback(async (uids: string[]) => {
     if (!db || uids.length === 0) return {};
 
@@ -73,6 +74,8 @@ const ResumeLists: React.FC = () => {
     }
     return nameMap;
   }, []);
+
+  // --- 3. Fetch All Resumes ---
   useEffect(() => {
     if (!db || !isUserAdmin) return;
 
@@ -102,6 +105,8 @@ const ResumeLists: React.FC = () => {
           rawResumes.push(resume);
           uniqueUids.add(data.uid);
         });
+
+        // Group the resumes by UID
         const grouped = rawResumes.reduce<GroupedResumes>((acc, resume) => {
           if (!acc[resume.uid]) {
             acc[resume.uid] = [];
@@ -112,6 +117,7 @@ const ResumeLists: React.FC = () => {
 
         setGroupedResumes(grouped);
 
+        // Fetch display names for all UIDs
         const namesMap = await fetchApplicantNames(Array.from(uniqueUids));
         setApplicantNames(namesMap);
 

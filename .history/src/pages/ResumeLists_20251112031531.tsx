@@ -1,36 +1,40 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { collection, query, getDocs, DocumentData, limit, where, Timestamp } from "firebase/firestore";
+import { collection, query, getDocs, Firestore, DocumentData } from "firebase/firestore";
 import { FileText, Link as LinkIcon, Loader2 } from "lucide-react";
-import { onAuthStateChanged, User } from "firebase/auth";
 
-import { auth, db } from "../../firebase";
+// Import initialized Firebase services
+// Adjust the relative path as needed based on your structure.
+// Assuming this file is at src/pages/Resumes/ and firebase.js is at the root.
+import { auth, db } from "../../../../../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 type ResumeMetadata = {
   id: string;
   fileName: string;
   fileSize: string;
   fileUrl: string;
-  uploadDate: string;
+  uploadDate: string; // Formatted date string
   uid: string;
-  storagePath: string;
 };
 
+// Type to hold resumes grouped by applicant UID
 type GroupedResumes = {
   [uid: string]: ResumeMetadata[];
 };
 
 const RESUMES_COLLECTION = "user_resumes";
-const ACCOUNTS_COLLECTION = "accounts";
+const ACCOUNTS_COLLECTION = "accounts"; // Assuming user profile data is here
 
-const ResumeLists: React.FC = () => {
+const ApplicantResumes: React.FC = () => {
   const [groupedResumes, setGroupedResumes] = useState<GroupedResumes>({});
   const [applicantNames, setApplicantNames] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
 
+  // --- 1. Check Auth State and Admin Status (Crucial for an ATS feature) ---
   useEffect(() => {
     if (!auth) {
       setError("Authentication service not initialized.");
@@ -39,6 +43,9 @@ const ResumeLists: React.FC = () => {
     }
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      // For a real app, you would check Firestore (e.g., userDoc.data().role === 'admin')
+      // For this example, we assume any logged-in user can view this, 
+      // but in production, this MUST be tied to an actual admin role check.
       if (user) {
         setIsUserAdmin(true);
       } else {
@@ -50,11 +57,16 @@ const ResumeLists: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  // --- 2. Fetch User Display Names ---
   const fetchApplicantNames = useCallback(async (uids: string[]) => {
     if (!db || uids.length === 0) return {};
 
+    // Fetch display names from the 'accounts' collection
+    // This is necessary because the resume metadata only stores the UID.
     const nameMap: Record<string, string> = {};
     try {
+      // Use batched reads or 'where(id in [...])' if available and UIDs array is small (<=10)
+      // For simplicity, we'll fetch individual docs:
       const namePromises = uids.map(uid => getDocs(query(collection(db, ACCOUNTS_COLLECTION), where('uid', '==', uid), limit(1))));
       const snapshots = await Promise.all(namePromises);
 
@@ -73,6 +85,8 @@ const ResumeLists: React.FC = () => {
     }
     return nameMap;
   }, []);
+
+  // --- 3. Fetch All Resumes ---
   useEffect(() => {
     if (!db || !isUserAdmin) return;
 
@@ -102,6 +116,8 @@ const ResumeLists: React.FC = () => {
           rawResumes.push(resume);
           uniqueUids.add(data.uid);
         });
+
+        // Group the resumes by UID
         const grouped = rawResumes.reduce<GroupedResumes>((acc, resume) => {
           if (!acc[resume.uid]) {
             acc[resume.uid] = [];
@@ -112,6 +128,7 @@ const ResumeLists: React.FC = () => {
 
         setGroupedResumes(grouped);
 
+        // Fetch display names for all UIDs
         const namesMap = await fetchApplicantNames(Array.from(uniqueUids));
         setApplicantNames(namesMap);
 
@@ -206,4 +223,4 @@ const ResumeLists: React.FC = () => {
   );
 };
 
-export default ResumeLists;
+export default ApplicantResumes;

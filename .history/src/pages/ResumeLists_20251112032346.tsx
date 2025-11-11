@@ -12,7 +12,7 @@ type ResumeMetadata = {
   fileName: string;
   fileSize: string;
   fileUrl: string;
-  uploadDate: string;
+  uploadDate: string; 
   uid: string;
   storagePath: string;
 };
@@ -73,7 +73,7 @@ const ResumeLists: React.FC = () => {
     }
     return nameMap;
   }, []);
-  useEffect(() => {
+ useEffect(() => {
     if (!db || !isUserAdmin) return;
 
     const loadResumes = async () => {
@@ -102,7 +102,7 @@ const ResumeLists: React.FC = () => {
           rawResumes.push(resume);
           uniqueUids.add(data.uid);
         });
-        const grouped = rawResumes.reduce<GroupedResumes>((acc, resume) => {
+     const grouped = rawResumes.reduce<GroupedResumes>((acc, resume) => {
           if (!acc[resume.uid]) {
             acc[resume.uid] = [];
           }

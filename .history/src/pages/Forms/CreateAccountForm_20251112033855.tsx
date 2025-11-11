@@ -1,10 +1,9 @@
-// C:\Users\Renz Jericho Buday\iain-admin-11-12\src\pages\Forms\CreateAccountForm.tsx
-
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-import { auth, db, functions } from "../../../firebase";
-import { httpsCallable } from "firebase/functions";
+// Import auth, db, and the new functions export
+import { auth, db, functions } from "../../../";
+import { httpsCallable } from "firebase/functions"; // Import callable
 
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
@@ -35,6 +34,7 @@ const initialFormData: FormData = {
 const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dupjdmjha/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "applicantprofile";
 
+// Initialize the callable function once outside the component
 const sendWelcomeEmailCallable = httpsCallable(functions, 'sendWelcomeEmail');
 
 export default function CreateAccount() {
@@ -62,6 +62,7 @@ export default function CreateAccount() {
   };
 
   const uploadImageToCloudinary = async (file: File): Promise<string | null> => {
+    // ... (Your existing Cloudinary upload logic)
     const data = new FormData();
     data.append("file", file);
     data.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
@@ -109,7 +110,7 @@ export default function CreateAccount() {
         }
       }
 
-
+      // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -117,7 +118,7 @@ export default function CreateAccount() {
       );
       const user = userCredential.user;
 
-
+      // 2. Prepare and save profile data to Firestore
       const profileData = {
         uid: user.uid,
         email: formData.email,
@@ -139,16 +140,16 @@ export default function CreateAccount() {
 
       await setDoc(doc(db, "accounts", user.uid), profileData);
 
-
+      // 3. SECURELY trigger the welcome email via Cloud Function
       try {
         await sendWelcomeEmailCallable({
           email: formData.email,
-
+          // IMPORTANT: Password is NOT passed for security reasons.
         });
         console.log("Welcome email successfully triggered.");
-      } catch (emailTriggerError: any) {
-
-        console.error("Warning: Account created, but email trigger failed:", emailTriggerError.message || emailTriggerError);
+      } catch (emailTriggerError) {
+        console.error("Warning: Account created, but email trigger failed:", emailTriggerError);
+        // We still consider the account creation a success.
       }
 
 
@@ -191,10 +192,11 @@ export default function CreateAccount() {
       )}
 
       <form onSubmit={handleCreateAccount}>
+        {/* ... (Your form fields remain the same) ... */}
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className="space-y-6">
 
-
+            {/* --- PROFILE IMAGE UPLOAD --- */}
             <div className="component-card p-5 border border-gray-200 rounded-lg dark:border-gray-800">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Profile Image</h2>
               <div className="flex items-center space-x-4">
@@ -211,31 +213,31 @@ export default function CreateAccount() {
                 </label>
               </div>
             </div>
-
+            {/* --------------------------- */}
 
             <div className="component-card">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Profile Information</h2>
               <div className="grid grid-cols-2 gap-4">
 
-
+                {/* First Name */}
                 <div>
                   <Label>First Name</Label>
                   <Input type="text" name="firstName" placeholder="Enter first name" value={formData.firstName} onChange={handleInputChange} required />
                 </div>
 
-
+                {/* Last Name */}
                 <div>
                   <Label>Last Name</Label>
                   <Input type="text" name="lastName" placeholder="Enter last name" value={formData.lastName} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Birthdate */}
                 <div>
                   <Label>Birthdate</Label>
                   <Input type="date" name="birthDate" placeholder="YYYY-MM-DD" value={formData.birthDate} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Gender Select Field */}
                 <div>
                   <Label>Gender</Label>
                   <select
@@ -252,7 +254,7 @@ export default function CreateAccount() {
                   </select>
                 </div>
 
-
+                {/* Password  */}
                 <div className="col-span-2">
                   <Label>Password</Label>
                   <Input type="password" name="password" placeholder="Set password" value={formData.password} onChange={handleInputChange} required />
@@ -260,17 +262,17 @@ export default function CreateAccount() {
               </div>
             </div>
 
-
+            {/* --- Email and Phone --- */}
             <div className="component-card">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Email and Phone</h2>
               <div className="space-y-4">
-
+                {/* Email */}
                 <div>
                   <Label>Email</Label>
                   <Input type="email" name="email" placeholder="info@example.com" value={formData.email} onChange={handleInputChange} required />
                 </div>
 
-
+                {/* Phone */}
                 <div>
                   <Label>Phone</Label>
                   <Input type="tel" name="phone" placeholder="+64 923 456 7890" value={formData.phone} onChange={handleInputChange} />
@@ -281,30 +283,30 @@ export default function CreateAccount() {
 
           <div className="space-y-6">
 
-
+            {/* --- Address Info --- */}
             <div className="component-card">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Address Information</h2>
               <div className="space-y-4">
 
-
+                {/* Street */}
                 <div>
                   <Label>Street</Label>
                   <Input type="text" name="street" placeholder="Street Address" value={formData.street} onChange={handleInputChange} />
                 </div>
 
-
+                {/* City */}
                 <div>
                   <Label>City</Label>
                   <Input type="text" name="city" placeholder="City" value={formData.city} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Zip */}
                 <div>
                   <Label>Zip</Label>
                   <Input type="text" name="zip" placeholder="Zip Code" value={formData.zip} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Country */}
                 <div>
                   <Label>Country</Label>
                   <Input type="text" name="country" placeholder="Country" value={formData.country} onChange={handleInputChange} />

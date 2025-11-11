@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+// IMPORTANT: Ensure your firebase.ts file exports 'auth', 'db', and 'functions'
 import { auth, db, functions } from "../../../firebase";
 import { httpsCallable } from "firebase/functions";
 
+// Import your custom UI components
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 import Button from "../../components/ui/button/Button";
 import PageMeta from "../../components/common/PageMeta";
@@ -35,6 +37,7 @@ const initialFormData: FormData = {
 const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/dupjdmjha/image/upload";
 const CLOUDINARY_UPLOAD_PRESET = "applicantprofile";
 
+// Initialize the callable function once outside the component
 const sendWelcomeEmailCallable = httpsCallable(functions, 'sendWelcomeEmail');
 
 export default function CreateAccount() {
@@ -50,7 +53,7 @@ export default function CreateAccount() {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError(null);
-    setSuccessMessage(null);
+    setSuccessMessage(null); // Clear messages on input change
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,7 +93,7 @@ export default function CreateAccount() {
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccessMessage(null);
+    setSuccessMessage(null); // Clear messages on submission start
 
     if (!formData.email || !formData.password || !formData.firstName) {
       setError("Email, Password, and First Name are required.");
@@ -102,6 +105,7 @@ export default function CreateAccount() {
     let profileImageUrl: string | null = null;
 
     try {
+      // 0. Upload image if present
       if (profileImageFile) {
         profileImageUrl = await uploadImageToCloudinary(profileImageFile);
         if (!profileImageUrl) {
@@ -109,7 +113,7 @@ export default function CreateAccount() {
         }
       }
 
-
+      // 1. Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -117,7 +121,7 @@ export default function CreateAccount() {
       );
       const user = userCredential.user;
 
-
+      // 2. Prepare and save profile data to Firestore
       const profileData = {
         uid: user.uid,
         email: formData.email,
@@ -139,21 +143,24 @@ export default function CreateAccount() {
 
       await setDoc(doc(db, "accounts", user.uid), profileData);
 
-
+      // 3. SECURELY trigger the welcome email via Cloud Function
       try {
+        // The Https Callable function requires the user to be logged in, 
+        // which the newly created user is immediately after creation.
         await sendWelcomeEmailCallable({
           email: formData.email,
-
+          // IMPORTANT: Password is NOT passed for security reasons.
         });
         console.log("Welcome email successfully triggered.");
       } catch (emailTriggerError: any) {
-
+        // Log the failure but don't stop the success message for account creation
         console.error("Warning: Account created, but email trigger failed:", emailTriggerError.message || emailTriggerError);
       }
 
 
       console.log("Account created successfully with image URL:", profileImageUrl);
       setSuccessMessage("New account created successfully! A confirmation email has been sent.");
+      // Clear the form fields upon success
       setFormData(initialFormData);
       setProfileImageFile(null);
       setImagePreview(null);
@@ -194,7 +201,7 @@ export default function CreateAccount() {
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div className="space-y-6">
 
-
+            {/* --- PROFILE IMAGE UPLOAD --- */}
             <div className="component-card p-5 border border-gray-200 rounded-lg dark:border-gray-800">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Profile Image</h2>
               <div className="flex items-center space-x-4">
@@ -211,31 +218,31 @@ export default function CreateAccount() {
                 </label>
               </div>
             </div>
-
+            {/* --------------------------- */}
 
             <div className="component-card">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Profile Information</h2>
               <div className="grid grid-cols-2 gap-4">
 
-
+                {/* First Name */}
                 <div>
                   <Label>First Name</Label>
                   <Input type="text" name="firstName" placeholder="Enter first name" value={formData.firstName} onChange={handleInputChange} required />
                 </div>
 
-
+                {/* Last Name */}
                 <div>
                   <Label>Last Name</Label>
                   <Input type="text" name="lastName" placeholder="Enter last name" value={formData.lastName} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Birthdate */}
                 <div>
                   <Label>Birthdate</Label>
                   <Input type="date" name="birthDate" placeholder="YYYY-MM-DD" value={formData.birthDate} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Gender Select Field */}
                 <div>
                   <Label>Gender</Label>
                   <select
@@ -252,7 +259,7 @@ export default function CreateAccount() {
                   </select>
                 </div>
 
-
+                {/* Password  */}
                 <div className="col-span-2">
                   <Label>Password</Label>
                   <Input type="password" name="password" placeholder="Set password" value={formData.password} onChange={handleInputChange} required />
@@ -260,17 +267,17 @@ export default function CreateAccount() {
               </div>
             </div>
 
-
+            {/* --- Email and Phone --- */}
             <div className="component-card">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Email and Phone</h2>
               <div className="space-y-4">
-
+                {/* Email */}
                 <div>
                   <Label>Email</Label>
                   <Input type="email" name="email" placeholder="info@example.com" value={formData.email} onChange={handleInputChange} required />
                 </div>
 
-
+                {/* Phone */}
                 <div>
                   <Label>Phone</Label>
                   <Input type="tel" name="phone" placeholder="+64 923 456 7890" value={formData.phone} onChange={handleInputChange} />
@@ -281,30 +288,30 @@ export default function CreateAccount() {
 
           <div className="space-y-6">
 
-
+            {/* --- Address Info --- */}
             <div className="component-card">
               <h2 className="mb-4 font-semibold text-gray-800 dark:text-white/90">Address Information</h2>
               <div className="space-y-4">
 
-
+                {/* Street */}
                 <div>
                   <Label>Street</Label>
                   <Input type="text" name="street" placeholder="Street Address" value={formData.street} onChange={handleInputChange} />
                 </div>
 
-
+                {/* City */}
                 <div>
                   <Label>City</Label>
                   <Input type="text" name="city" placeholder="City" value={formData.city} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Zip */}
                 <div>
                   <Label>Zip</Label>
                   <Input type="text" name="zip" placeholder="Zip Code" value={formData.zip} onChange={handleInputChange} />
                 </div>
 
-
+                {/* Country */}
                 <div>
                   <Label>Country</Label>
                   <Input type="text" name="country" placeholder="Country" value={formData.country} onChange={handleInputChange} />
